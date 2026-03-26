@@ -1,4 +1,6 @@
 import Foundation
+import SwiftUI
+import UniformTypeIdentifiers
 
 enum SourceLanguage: String, CaseIterable, Identifiable, Codable {
     case c = "C"
@@ -13,6 +15,23 @@ enum SourceLanguage: String, CaseIterable, Identifiable, Codable {
         case .cpp:
             return "cpp"
         }
+    }
+
+    var fileExtension: String {
+        switch self {
+        case .c:
+            return "c"
+        case .cpp:
+            return "cpp"
+        }
+    }
+
+    var defaultFileName: String {
+        "main.\(fileExtension)"
+    }
+
+    var exportContentType: UTType {
+        UTType(filenameExtension: fileExtension) ?? .plainText
     }
 
     var defaultTemplate: String {
@@ -35,6 +54,19 @@ enum SourceLanguage: String, CaseIterable, Identifiable, Codable {
                 return 0;
             }
             """
+        }
+    }
+
+    static func infer(from fileName: String) -> SourceLanguage? {
+        let fileExtension = URL(fileURLWithPath: fileName).pathExtension.lowercased()
+
+        switch fileExtension {
+        case "c", "h":
+            return .c
+        case "cc", "cp", "cpp", "cxx", "hpp", "hh", "hxx":
+            return .cpp
+        default:
+            return nil
         }
     }
 }
@@ -67,5 +99,37 @@ enum CompilerError: LocalizedError {
         case let .transport(message):
             return message
         }
+    }
+}
+
+struct SourceCodeDocument: FileDocument {
+    static var readableContentTypes: [UTType] { supportedContentTypes }
+    static var writableContentTypes: [UTType] { supportedContentTypes }
+
+    static let supportedContentTypes: [UTType] = {
+        var contentTypes: [UTType] = [.plainText]
+
+        ["c", "h", "cc", "cp", "cpp", "cxx", "hh", "hpp", "hxx"].forEach { fileExtension in
+            if let contentType = UTType(filenameExtension: fileExtension) {
+                contentTypes.append(contentType)
+            }
+        }
+
+        return contentTypes
+    }()
+
+    var text: String
+
+    init(text: String = "") {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        let data = configuration.file.regularFileContents ?? Data()
+        text = String(decoding: data, as: UTF8.self)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
