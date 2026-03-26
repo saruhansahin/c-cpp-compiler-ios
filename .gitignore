@@ -1,0 +1,17 @@
+.DS_Store
+
+# Xcode user and build data
+build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+
+# App packaging
+*.ipa
