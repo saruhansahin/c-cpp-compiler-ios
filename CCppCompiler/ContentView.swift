@@ -45,13 +45,24 @@ struct ContentView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Use Remote Compiler API", isOn: $viewModel.useRemoteCompiler)
+                        Text("Compiler Backend")
+                            .font(.headline)
+
+                        Toggle("Use Live Compiler Server", isOn: $viewModel.useRemoteCompiler)
 
                         if viewModel.useRemoteCompiler {
                             TextField("Endpoint URL", text: $viewModel.endpointText)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .textFieldStyle(.roundedBorder)
+
+                            Text(viewModel.endpointHint)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Mock mode is useful only for UI testing. Turn on the live server for real compilation.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -66,7 +77,7 @@ struct ContentView: View {
                                 ProgressView()
                                     .tint(.white)
                             } else {
-                                Text("Compile")
+                                Text("Compile & Run")
                                     .fontWeight(.semibold)
                             }
                             Spacer()
@@ -94,7 +105,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Architecture Note")
                             .font(.headline)
-                        Text("App Store iOS apps cannot execute arbitrary newly compiled native binaries. Use a backend or a WASM runtime for real compilation.")
+                        Text("The best production path is a remote compiler backend. The app stays mobile-first, but compilation runs in a controlled server sandbox.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

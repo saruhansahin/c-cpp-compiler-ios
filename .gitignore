@@ -3,6 +3,7 @@
 # Xcode user and build data
 build/
 DerivedData/
+.derivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcuserdatad/
@@ -15,3 +16,7 @@ Package.resolved
 
 # App packaging
 *.ipa
+
+# Python
+__pycache__/
+*.pyc

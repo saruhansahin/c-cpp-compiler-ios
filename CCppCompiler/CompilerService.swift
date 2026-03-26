@@ -4,6 +4,10 @@ protocol CompilerService {
     func compile(source: String, language: SourceLanguage, stdin: String) async throws -> CompileResponse
 }
 
+private struct APIErrorResponse: Decodable {
+    let error: String
+}
+
 struct MockCompilerService: CompilerService {
     func compile(source: String, language: SourceLanguage, stdin: String) async throws -> CompileResponse {
         try await Task.sleep(nanoseconds: 600_000_000)
@@ -62,6 +66,7 @@ struct RemoteCompilerService: CompilerService {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 20
         request.httpBody = try JSONEncoder().encode(
             CompileRequest(language: language.apiValue, source: source, stdin: stdin)
         )
@@ -73,7 +78,19 @@ struct RemoteCompilerService: CompilerService {
             throw CompilerError.transport(error.localizedDescription)
         }
 
-        guard let httpResponse = response as? HTTPURLResponse, (200 ..< 300).contains(httpResponse.statusCode) else {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw CompilerError.invalidResponse
+        }
+
+        guard (200 ..< 300).contains(httpResponse.statusCode) else {
+            if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+                throw CompilerError.transport(apiError.error)
+            }
+
+            if let plainText = String(data: data, encoding: .utf8), !plainText.isEmpty {
+                throw CompilerError.transport(plainText)
+            }
+
             throw CompilerError.invalidResponse
         }
 

@@ -1,40 +1,87 @@
 # C/C++ Compiler Mobile App
 
-This workspace contains a starter iOS app built with SwiftUI for a mobile C/C++ compiler experience.
+This repo now contains the best practical architecture for a mobile C/C++ compiler on iOS:
 
-## What this starter does
+- a SwiftUI iPhone app for editing code and showing results
+- a real backend compile server that runs `clang` and `clang++`
+- a clean API boundary so the app can compile and run code from inside your own product
 
-- lets the user edit C or C++ source code
-- provides example templates
-- has a compile action and output panel
-- isolates compilation behind a service protocol so you can swap implementations later
+## Why this architecture
 
-## Important iOS constraint
+iOS apps can present the full compiler experience, but they cannot behave like a desktop IDE that freely creates and executes arbitrary new native binaries on-device. The production-safe answer is:
 
-iOS does not let regular App Store apps compile arbitrary native code and execute unsigned machine code the same way a desktop IDE does. Because of that, a production-ready mobile compiler usually uses one of these approaches:
+1. User writes code in your app
+2. Your app sends it to your backend
+3. Your backend compiles and runs it inside a restricted environment
+4. Your app displays the output
 
-1. Remote compilation: send code to your own backend, compile in a container, and return stdout/stderr
-2. Embedded WebAssembly toolchain: compile and run inside a WASM runtime
-3. Limited interpreter/sandbox: support only a subset of languages or prebuilt execution environments
+To the user, your app is still the compiler.
 
-This starter ships with:
+## Repo layout
 
-- `MockCompilerService` for local UI development
-- `RemoteCompilerService` stub for a real backend later
+- `CCppCompiler.xcodeproj`: iOS app project
+- `CCppCompiler/`: SwiftUI app source
+- `backend/server.py`: real compile-and-run HTTP server
+- `backend/smoke_test.py`: small integration test for the backend
 
-## Files
+## Run the backend
 
-- `CCppCompiler.xcodeproj`: Xcode project
-- `CCppCompiler/`: app source
+On your Mac:
 
-## Next steps
+```bash
+cd /path/to/c-cpp-compiler-ios
+python3 backend/server.py --host 127.0.0.1 --port 8080
+```
 
-1. Open `CCppCompiler.xcodeproj` in Xcode
-2. Run the app in the iOS Simulator
-3. Replace `MockCompilerService` with a real backend integration
-4. Add authentication, request limits, and sandboxed job execution on the server side
+For a physical iPhone on the same Wi‑Fi network:
 
-## Suggested backend API
+```bash
+cd /path/to/c-cpp-compiler-ios
+python3 backend/server.py --host 0.0.0.0 --port 8080
+```
+
+Then set the app endpoint to:
+
+- Simulator: `http://127.0.0.1:8080/compile`
+- Real iPhone: `http://YOUR_MAC_LOCAL_IP:8080/compile`
+
+Example local IP:
+
+```text
+http://192.168.1.20:8080/compile
+```
+
+You can find your Mac's Wi-Fi IP with:
+
+```bash
+ipconfig getifaddr en0
+```
+
+## Test the backend
+
+Start the server, then run:
+
+```bash
+cd /path/to/c-cpp-compiler-ios
+python3 backend/smoke_test.py
+```
+
+## Open the app
+
+```bash
+open CCppCompiler.xcodeproj
+```
+
+Avoid `:` in the parent folder name when opening the Xcode project. A path like `C:Cpp Compiler` can break Swift dependency parsing during builds. Use a clean folder name such as `c-cpp-compiler-ios`.
+
+Inside the app:
+
+1. Keep `Use Live Compiler Server` enabled
+2. Confirm the endpoint URL
+3. Load the sample
+4. Tap `Compile & Run`
+
+## API
 
 `POST /compile`
 
@@ -43,7 +90,7 @@ Request:
 ```json
 {
   "language": "cpp",
-  "source": "#include <iostream>\nint main(){ std::cout << \"Hi\"; }",
+  "source": "#include <iostream>\nint main(){ std::cout << \"Hi\" << std::endl; }",
   "stdin": ""
 }
 ```
@@ -59,3 +106,21 @@ Response:
   "durationMs": 48
 }
 ```
+
+Health check:
+
+```text
+GET /health
+```
+
+## Security note
+
+`backend/server.py` includes basic limits for:
+
+- compile timeout
+- run timeout
+- memory
+- process count
+- captured output size
+
+That is good for local development and controlled demos. For public deployment, put this backend inside a real container or VM sandbox and add authentication plus rate limits.
